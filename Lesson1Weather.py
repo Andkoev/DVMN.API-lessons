@@ -3,15 +3,10 @@ from urllib.parse import quote
 
 template = 'https://wttr.in/{}'
 cities = ['Шереметьево', 'Череповец', 'Лондон']
-
-flags = ['mM','nTq']
-params = '&'.join(flags) + '&lang=ru'
+params = {'nTq': '', 'mM': '', 'lang': 'ru'}
 
 for city in cities:
-    encoded_city = quote(city)
-    url = f'{template.format(encoded_city)}?{params}'
-    response = requests.get(url)
+    url = template.format(quote(city))
+    response = requests.get(url, params=params)
     response.raise_for_status()
     print(response.text)
-
-input()
