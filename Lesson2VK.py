@@ -1,7 +1,9 @@
 import os
-import requests
 from urllib.parse import urlparse
+
+import requests
 from dotenv import load_dotenv
+
 
 load_dotenv()
 TOKEN = os.getenv('VK_TOKEN')
@@ -51,6 +53,7 @@ def count_clicks(short_url):
 def main():
     if not TOKEN:
         print("Ошибка: токен доступа VK не найден.")
+        input("\nНажмите Enter, чтобы закрыть...")
         return
 
     input_url = input('Введите ссылку: ')
