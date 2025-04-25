@@ -9,7 +9,7 @@ TOKEN = os.getenv('VK_TOKEN')
 
 def is_shorten_link(url):
     if not url.startswith('http'):
-        url = 'https://' + url
+        url = 'https://' + url.lstrip('/')
     parsed = urlparse(url)
     return 'vk.cc' in parsed.netloc
 
@@ -48,21 +48,30 @@ def count_clicks(short_url):
     return data['response']['stats'][0]['views']
 
 
-input_url = input('Введите ссылку: ')
+def main():
+    if not TOKEN:
+        print("Ошибка: токен доступа VK не найден.")
+        return
 
-if is_shorten_link(input_url):
-    clicks = count_clicks(input_url)
-    if isinstance(clicks, str) and clicks.startswith("Ошибка"):
-        print(clicks)
-    else:
-        print("Это короткая ссылка.")
-        print("Кол-во переходов по ссылке:", clicks)
-else:
-    short_url = shorten_link(input_url)
-    if isinstance(short_url, str) and short_url.startswith("Ошибка"):
-        print(short_url)
-    else:
-        print("Это длинная ссылка.")
-        print("Сокращенная ссылка:", short_url)
+    input_url = input('Введите ссылку: ')
 
-input ()
+    if is_shorten_link(input_url):
+        clicks = count_clicks(input_url)
+        if isinstance(clicks, str) and clicks.startswith("Ошибка"):
+            print(clicks)
+        else:
+            print("Это короткая ссылка.")
+            print("Кол-во переходов по ссылке:", clicks)
+    else:
+        short_url = shorten_link(input_url)
+        if isinstance(short_url, str) and short_url.startswith("Ошибка"):
+            print(short_url)
+        else:
+            print("Это длинная ссылка.")
+            print("Сокращенная ссылка:", short_url)
+
+    input("\nНажмите Enter, чтобы закрыть...")
+
+
+if __name__ == '__main__':
+    main()
