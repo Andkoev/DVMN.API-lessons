@@ -4,10 +4,11 @@ import requests
 from dotenv import load_dotenv
 
 
-def is_shorten_link(url):
-    if not url.startswith('http'):
-        url = 'https://' + url.lstrip('/')
-    parsed = urlparse(url)
+def is_shorten_link(raw_url):
+    test_url = raw_url
+    if not test_url.startswith('http'):
+        test_url = 'https://' + test_url.lstrip('/')
+    parsed = urlparse(test_url)
     return 'vk.cc' in parsed.netloc
 
 
@@ -23,11 +24,11 @@ def shorten_link(token, url):
     response = requests.get(api_url, params=params)
     response.raise_for_status()
 
-    data = response.json()
-    if 'error' in data:
-        raise Exception(data['error']['error_msg'])
+    response_data = response.json()
+    if 'error' in response_data:
+        raise Exception(response_data['error']['error_msg'])
 
-    return data['response']['short_url']
+    return response_data['response']['short_url']
 
 
 def count_clicks(token, short_url):
@@ -42,11 +43,11 @@ def count_clicks(token, short_url):
     response = requests.get(api_url, params=params)
     response.raise_for_status()
 
-    data = response.json()
-    if 'error' in data:
-        raise Exception(data['error']['error_msg'])
+    stats_data = response.json()
+    if 'error' in stats_data:
+        raise Exception(stats_data['error']['error_msg'])
 
-    return data['response']['stats'][0]['views']
+    return stats_data['response']['stats'][0]['views']
 
 
 def main():
