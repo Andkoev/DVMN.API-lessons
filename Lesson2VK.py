@@ -4,12 +4,11 @@ import requests
 from dotenv import load_dotenv
 
 
-def is_shorten_link(raw_url):
-    test_url = raw_url
-    if not test_url.startswith('http'):
-        test_url = 'https://' + test_url.lstrip('/')
-    parsed = urlparse(test_url)
-    return 'vk.cc' in parsed.netloc
+def is_shorten_link(url):
+    if not url.startswith('http'):
+        url = 'https://' + url.lstrip('/')
+    parsed_url = urlparse(url)
+    return parsed_url.netloc.lower() == 'vk.cc'
 
 
 def shorten_link(token, url):
@@ -26,7 +25,7 @@ def shorten_link(token, url):
 
     response_data = response.json()
     if 'error' in response_data:
-        raise Exception(response_data['error']['error_msg'])
+        raise KeyError(response_data['error']['error_msg'])
 
     return response_data['response']['short_url']
 
@@ -43,11 +42,11 @@ def count_clicks(token, short_url):
     response = requests.get(api_url, params=params)
     response.raise_for_status()
 
-    stats_data = response.json()
-    if 'error' in stats_data:
-        raise Exception(stats_data['error']['error_msg'])
+    click_stats_data = response.json()
+    if 'error' in click_stats_data:
+        raise KeyError(click_stats_data['error']['error_msg'])
 
-    return stats_data['response']['stats'][0]['views']
+    return click_stats_data['response']['stats'][0]['views']
 
 
 def main():
@@ -71,12 +70,16 @@ def main():
             print("Это длинная ссылка.")
             print("Сокращенная ссылка:", short_url)
 
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP ошибка: {e.response.status_code} – {e.response.reason}")
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка сети или запроса: {str(e)}")
-    except Exception as e:
-        print(f"Ошибка: {str(e)}")
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP ошибка: {http_err.response.status_code} – {http_err.response.reason}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"Ошибка сети или запроса: {str(req_err)}")
+    except KeyError as key_err:
+        print(f"Ошибка в данных: {str(key_err)}")
+    except ValueError as val_err:
+        print(f"Ошибка значения: {str(val_err)}")
+    except Exception as unknown_err:
+        print(f"Неизвестная ошибка: {str(unknown_err)}")
 
     input("\nНажмите Enter, чтобы закрыть...")
 
