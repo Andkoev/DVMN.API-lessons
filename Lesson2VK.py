@@ -1,12 +1,7 @@
 import os
 from urllib.parse import urlparse
-
 import requests
 from dotenv import load_dotenv
-
-
-load_dotenv()
-TOKEN = os.getenv('VK_TOKEN')
 
 
 def is_shorten_link(url):
@@ -16,62 +11,71 @@ def is_shorten_link(url):
     return 'vk.cc' in parsed.netloc
 
 
-def shorten_link(url):
+def shorten_link(token, url):
     api_url = 'https://api.vk.com/method/utils.getShortLink'
     params = {
-        'access_token': TOKEN,
+        'access_token': token,
         'url': url,
         'private': 0,
         'v': '5.199'
     }
-    response = requests.get(api_url, params=params)
-    data = response.json()
 
+    response = requests.get(api_url, params=params)
+    response.raise_for_status()
+
+    data = response.json()
     if 'error' in data:
-        return f"Ошибка: {data['error']['error_msg']}"
+        raise Exception(data['error']['error_msg'])
 
     return data['response']['short_url']
 
 
-def count_clicks(short_url):
-    key = short_url.split('/')[-1]
+def count_clicks(token, short_url):
+    key = urlparse(short_url).path.lstrip('/')
     api_url = 'https://api.vk.com/method/utils.getLinkStats'
     params = {
-        'access_token': TOKEN,
+        'access_token': token,
         'key': key,
         'v': '5.199'
     }
-    response = requests.get(api_url, params=params)
-    data = response.json()
 
+    response = requests.get(api_url, params=params)
+    response.raise_for_status()
+
+    data = response.json()
     if 'error' in data:
-        return f"Ошибка: {data['error']['error_msg']}"
+        raise Exception(data['error']['error_msg'])
 
     return data['response']['stats'][0]['views']
 
 
 def main():
-    if not TOKEN:
+    load_dotenv()
+    token = os.getenv('VK_TOKEN')
+
+    if not token:
         print("Ошибка: токен доступа VK не найден.")
         input("\nНажмите Enter, чтобы закрыть...")
         return
 
-    input_url = input('Введите ссылку: ')
+    url = input('Введите ссылку: ')
 
-    if is_shorten_link(input_url):
-        clicks = count_clicks(input_url)
-        if isinstance(clicks, str) and clicks.startswith("Ошибка"):
-            print(clicks)
-        else:
+    try:
+        if is_shorten_link(url):
+            clicks = count_clicks(token, url)
             print("Это короткая ссылка.")
             print("Кол-во переходов по ссылке:", clicks)
-    else:
-        short_url = shorten_link(input_url)
-        if isinstance(short_url, str) and short_url.startswith("Ошибка"):
-            print(short_url)
         else:
+            short_url = shorten_link(token, url)
             print("Это длинная ссылка.")
             print("Сокращенная ссылка:", short_url)
+
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP ошибка: {e.response.status_code} – {e.response.reason}")
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка сети или запроса: {str(e)}")
+    except Exception as e:
+        print(f"Ошибка: {str(e)}")
 
     input("\nНажмите Enter, чтобы закрыть...")
 
