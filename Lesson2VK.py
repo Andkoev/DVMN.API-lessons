@@ -3,86 +3,74 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 
-
-def is_shorten_link(url):
-    if not url.startswith('http'):
-        url = 'https://' + url.lstrip('/')
-    parsed_url = urlparse(url)
-    return parsed_url.netloc.lower() == 'vk.cc'
+API_URL = "https://api.vk.com/method"
+API_VERSION = "5.199"
 
 
-def shorten_link(token, url):
-    api_url = 'https://api.vk.com/method/utils.getShortLink'
-    params = {
-        'access_token': token,
-        'url': url,
-        'private': 0,
-        'v': '5.199'
-    }
-
-    response = requests.get(api_url, params=params)
-    response.raise_for_status()
-
-    response_data = response.json()
-    if 'error' in response_data:
-        raise KeyError(response_data['error']['error_msg'])
-
-    return response_data['response']['short_url']
+def check_vk_response (json_response):
+    if "error" in json_response:
+        message = json_response["error"].get("error_msg", "VK API error")
+        raise KeyError(message)
+    return json_response["response"]
 
 
-def count_clicks(token, short_url):
-    key = urlparse(short_url).path.lstrip('/')
-    api_url = 'https://api.vk.com/method/utils.getLinkStats'
-    params = {
-        'access_token': token,
-        'key': key,
-        'v': '5.199'
-    }
+def is_shorten_link(token: str, url: str) -> bool:
+    parsed = urlparse(url.strip())
+    key = parsed.path.lstrip("/") if parsed.netloc.lower() == "vk.cc" else ""
+    if not key:
+        return False
+    resp = requests.get(
+        f"{API_URL}/utils.getLinkStats",
+        params={"access_token": token, "key": key, "v": API_VERSION},
+    )
+    return "error" not in resp.json()
 
-    response = requests.get(api_url, params=params)
-    response.raise_for_status()
 
-    click_stats_data = response.json()
-    if 'error' in click_stats_data:
-        raise KeyError(click_stats_data['error']['error_msg'])
+def shorten_link(token: str, url: str) -> str:
+    resp = requests.get(
+        f"{API_URL}/utils.getShortLink",
+        params={"access_token": token, "url": url, "private": 0, "v": API_VERSION},
+    )
+    resp.raise_for_status()
+    vk_response = check_vk_response (resp.json())
+    return vk_response["short_url"]
 
-    return click_stats_data['response']['stats'][0]['views']
+
+def count_clicks(token: str, short_url: str) -> int:
+    key = urlparse(short_url).path.lstrip("/")
+    resp = requests.get(
+        f"{API_URL}/utils.getLinkStats",
+        params={"access_token": token, "key": key, "v": API_VERSION},
+    )
+    resp.raise_for_status()
+    vk_response = check_vk_response (resp.json())
+    stats_list = vk_response.get("stats", [])
+    return stats_list[0]["views"] if stats_list else 0
 
 
 def main():
     load_dotenv()
-    token = os.getenv('VK_TOKEN')
-
+    token = os.getenv("VK_TOKEN")
     if not token:
-        print("Ошибка: токен доступа VK не найден.")
-        input("\nНажмите Enter, чтобы закрыть...")
+        print("Ошибка: VK_TOKEN не найден.")
         return
-
-    url = input('Введите ссылку: ')
-
+    user_url = input("Вставьте ссылку: ").strip()
     try:
-        if is_shorten_link(url):
-            clicks = count_clicks(token, url)
-            print("Это короткая ссылка.")
-            print("Кол-во переходов по ссылке:", clicks)
+        if is_shorten_link(token, user_url):
+            clicks = count_clicks(token, user_url)
+            print(f"Это короткая ссылка. Переходов: {clicks}")
         else:
-            short_url = shorten_link(token, url)
-            print("Это длинная ссылка.")
-            print("Сокращенная ссылка:", short_url)
-
+            short_url = shorten_link(token, user_url)
+            print(f"Это длинная ссылка. Сокращённая: {short_url}")
     except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP ошибка: {http_err.response.status_code} – {http_err.response.reason}")
+        code = getattr(http_err.response, "status_code", "?")
+        reason = getattr(http_err.response, "reason", "")
+        print(f"HTTP ошибка: {code} — {reason}")
     except requests.exceptions.RequestException as req_err:
-        print(f"Ошибка сети или запроса: {str(req_err)}")
-    except KeyError as key_err:
-        print(f"Ошибка в данных: {str(key_err)}")
-    except ValueError as val_err:
-        print(f"Ошибка значения: {str(val_err)}")
-    except Exception as unknown_err:
-        print(f"Неизвестная ошибка: {str(unknown_err)}")
-
-    input("\nНажмите Enter, чтобы закрыть...")
+        print(f"Ошибка сети/запроса: {req_err}")
+    except KeyError as vk_err:
+        print(f"Ошибка VK API: {vk_err}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
