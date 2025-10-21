@@ -7,11 +7,11 @@ API_URL = "https://api.vk.com/method"
 API_VERSION = "5.199"
 
 
-def check_vk_response (json_response):
-    if "error" in json_response:
-        message = json_response["error"].get("error_msg", "VK API error")
+def ensure_vk_ok(response_dict):
+    if "error" in response_dict:
+        message = response_dict["error"].get("error_msg", "VK API error")
         raise KeyError(message)
-    return json_response["response"]
+    return response_dict["response"]
 
 
 def is_shorten_link(token: str, url: str) -> bool:
@@ -23,6 +23,7 @@ def is_shorten_link(token: str, url: str) -> bool:
         f"{API_URL}/utils.getLinkStats",
         params={"access_token": token, "key": key, "v": API_VERSION},
     )
+    resp.raise_for_status()
     return "error" not in resp.json()
 
 
@@ -32,7 +33,7 @@ def shorten_link(token: str, url: str) -> str:
         params={"access_token": token, "url": url, "private": 0, "v": API_VERSION},
     )
     resp.raise_for_status()
-    vk_response = check_vk_response (resp.json())
+    vk_response = ensure_vk_ok(resp.json())
     return vk_response["short_url"]
 
 
@@ -43,7 +44,7 @@ def count_clicks(token: str, short_url: str) -> int:
         params={"access_token": token, "key": key, "v": API_VERSION},
     )
     resp.raise_for_status()
-    vk_response = check_vk_response (resp.json())
+    vk_response = ensure_vk_ok(resp.json())
     stats_list = vk_response.get("stats", [])
     return stats_list[0]["views"] if stats_list else 0
 
@@ -52,7 +53,7 @@ def main():
     load_dotenv()
     token = os.getenv("VK_TOKEN")
     if not token:
-        print("Ошибка: VK_TOKEN не найден.")
+        print("Ошибка: переменная окружения VK_TOKEN не найдена.")
         return
     user_url = input("Вставьте ссылку: ").strip()
     try:
