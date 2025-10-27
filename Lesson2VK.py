@@ -1,6 +1,7 @@
 import os
 from urllib.parse import urlparse
 import requests
+import argparse
 from dotenv import load_dotenv
 
 API_URL = "https://api.vk.com/method"
@@ -55,7 +56,10 @@ def main():
     if not token:
         print("Ошибка: переменная окружения VK_TOKEN не найдена.")
         return
-    user_url = input("Вставьте ссылку: ").strip()
+    parser = argparse.ArgumentParser(description="Сокращение или подсчёт переходов по ссылке VK.cc")
+    parser.add_argument("url", help="Ваша ссылка (длинная или короткая)")
+    args = parser.parse_args()
+    user_url = args.url
     try:
         if is_shorten_link(token, user_url):
             clicks = count_clicks(token, user_url)
